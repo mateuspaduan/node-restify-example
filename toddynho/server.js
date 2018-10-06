@@ -1,27 +1,43 @@
 var restify = require('restify');
+var mysql = require('mysql');
 
-const path = "/toddy";
-
-var fakeId = 0;
-var toddynhos = [];
+// database info for connection
+var con = {
+    host: 'localhost',
+    user: 'root',
+    password: 'password',
+    database: 'ec021',
+};
 
 // handlers
 function insert(req, res, next) {
     // POST /inserir -> receberá os 3 parâmetros e fará inserção no BD. Retornando
     // um objeto completo (com id).
-
     res.setHeader('content-type', 'application/json');
+    res.charSet('UTF-8');
 
-    let Toddy = {
+    let toddy = {
         id: fakeId,
         lot: req.body.lot,
         content: req.body.content,
         expirationDate: req.body.expirationDate
     };
-    toddynhos.push(Toddy);
-    fakeId += 1;
 
-    res.send(Toddy);
+    // start connection
+    var connection = mysql.createConnection(con);
+    connection.connect();
+
+    // write query
+    var strQuery = "INSERT INTO toddy (lote, conteudo, validade) " +
+                "VALUES ('" + toddy.lot + "', '" + toddy.content + "', '" +
+                toddy.expirationDate + "');";
+
+    connection.query(strQuery, (err, rows, _) => {
+        !err ? res.json(rows) : res.json(err);
+    });
+
+    connection.end();
+    
     next();
 }
 
@@ -30,7 +46,7 @@ function update(req, res, next) {
     // (baseado no id passado). Retornando um objeto completo (com id).
 
     res.setHeader('content-type', 'application/json');
-
+    req.params
     let toddy = toddynhos.find((element, index) => {
         let condition = element.id === req.body.id;
         if (condition) {
@@ -49,8 +65,21 @@ function update(req, res, next) {
 
 function list(req, res, next) {
     // – GET /listar -> listará todos os elementos na tabela do BD.
-    
-    res.send(toddynhos);
+    res.setHeader('content-type', 'application/json');
+    res.charSet('UTF-8');
+
+    // start connection
+    var connection = mysql.createConnection(con);
+    connection.connect();
+
+    // write query
+    var strQuery = "SELECT lote, conteudo, validade FROM toddy;";
+
+    connection.query(strQuery, (err, rows, _) => {
+        !err ? res.json(rows) : res.json(err);
+    });
+
+    connection.end();
     next();
 }
 
@@ -78,6 +107,8 @@ var server = restify.createServer();
 server.use(restify.plugins.bodyParser());
 
 var port = process.env.PORT || 5000;
+// default path for requests
+const path = "/toddy";
 
 // routes
 server.post(path + '/inserir', insert);
@@ -86,5 +117,5 @@ server.get(path + '/listar', list);
 server.post(path + '/excluir', remove);
 
 server.listen(port, function() {
-  console.log('%s listening at %s', server.name, server.url);
+    console.log('%s listening at %s', server.name, server.url);
 });
